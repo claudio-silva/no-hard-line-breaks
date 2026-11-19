@@ -6,12 +6,14 @@
 //
 // It copies pre-commit and no-hard-line-breaks.mjs into <project>/.githooks/, points this clone's core.hooksPath at
 // .githooks, adds an npm "prepare" script that does the same in every other clone (Node projects), makes sure .gitignore
-// does not ignore the hook, and stages the changes. Committing them is up to you. Re-running it updates the hook.
+// does not ignore the hook, turns off the rules that ask for wrapped Markdown (linters.mjs), and stages the changes.
+// Committing them is up to you. Re-running it updates the hook.
 
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { REMINDER, settleLinters } from "./linters.mjs";
 
 const here = dirname(realpathSync(fileURLToPath(import.meta.url)));
 const HOOKS_DIR = ".githooks";
@@ -108,7 +110,11 @@ if (ignored().length) {
 	else notes.push(`.gitignore ignored ${HOOKS_DIR}/: a negation rule was added`);
 }
 
-// 6. Stage everything, forcing past any ignore rule that remains.
+// 6. Linters: nothing in the project may still ask for wrapped Markdown.
+const linters = settleLinters(root);
+for (const n of linters.notes) notes.push(`a rule that wraps Markdown is still on, and is yours to change. ${n}`);
+
+// 7. Stage everything, forcing past any ignore rule that remains.
 git(["add", "-f", "--", ...files], root);
 const stageable = (f) => {
 	if (!existsSync(join(root, f))) return false;
@@ -124,7 +130,7 @@ const stageable = (f) => {
 		}
 	}
 };
-const extra = ["package.json", ".gitignore"].filter(stageable);
+const extra = [...new Set(["package.json", ".gitignore", ...linters.changed])].filter(stageable);
 if (extra.length) git(["add", "--", ...extra], root);
 
 console.log(`no-hard-line-breaks installed in ${root}`);
@@ -136,4 +142,10 @@ console.log(
 );
 console.log(`  reformat every Markdown file now:  node ${HOOKS_DIR}/no-hard-line-breaks.mjs --all   (--check to only list them)`);
 console.log("  opt a path out (.gitattributes):  docs/legal/** -md-unwrap");
+console.log(
+	linters.changed.length
+		? `  linters: rules that limit or wrap Markdown lines were turned off in ${linters.changed.join(", ")}; review the staged changes`
+		: "  linters: no known rule that limits or wraps Markdown lines is on in this project's configuration",
+);
+console.log(`  reminder: ${REMINDER}`);
 for (const n of notes) console.log(`  note: ${n}`);

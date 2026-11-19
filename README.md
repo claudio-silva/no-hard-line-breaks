@@ -11,6 +11,7 @@ It is deterministic (no AI) and conservative: only line breaks inside a paragrap
 | `no-hard-line-breaks.mjs` | The engine: the hook mode and a command-line formatter (Node, no dependencies) |
 | `pre-commit` | The hook that calls it |
 | `install.mjs` | Installs both into a project |
+| `linters.mjs` | The installer's part that turns off rules asking for wrapped Markdown |
 | `test/` | Tests: `node --test` |
 
 ## Set it up on your machine
@@ -31,6 +32,8 @@ git commit -m "Shared pre-commit hook: no hard-wrapped Markdown prose"
 ```
 
 The installer copies `pre-commit` and `no-hard-line-breaks.mjs` into the project's `.githooks/`, sets `core.hooksPath` to `.githooks` in that clone, adds an npm `prepare` script that sets it in every other clone on install (Node projects; others run `git config core.hooksPath .githooks` once), makes sure `.gitignore` does not ignore `.githooks/`, and stages the changes. Re-running it updates the copies. It refuses a repository whose `core.hooksPath` already belongs to another hook manager, and prints the line to add to that one's pre-commit instead.
+
+**Linters.** A project that installs the hook has chosen one line per paragraph, so no linter or formatter should limit the length of Markdown lines or wrap prose again. The installer turns off the rules it knows, where it can change the configuration without guessing, and stages those files: markdownlint's `MD013` (JSON and YAML configurations, or a new `.markdownlint.json` when markdownlint is used with none), Prettier's `proseWrap: always` (set to `preserve`), a `max_line_length` of `.editorconfig` that reaches Markdown, and dprint's `textWrap: always`. Where the rule is set in a file it will not rewrite (JavaScript, JSON with comments, nested YAML, remark-lint's `maximum-line-length`), it prints a note with the file and the setting to change. It always ends with a reminder to turn off such a rule in any tool it does not know, an editor's included.
 
 Git never runs hooks that arrive with a clone by itself (a security rule), hence the `prepare` script. A pre-commit hook in `.git/hooks` keeps running (the shared hook calls it); other hooks there stop, and the installer lists them.
 
