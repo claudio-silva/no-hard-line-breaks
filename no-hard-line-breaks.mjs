@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 // no-hard-line-breaks: joins hard-wrapped prose in Markdown files, so each paragraph or list item is one line.
 //
 // Usage:
@@ -15,9 +16,9 @@
 // Opt a path out with a git attribute, in .gitattributes:   docs/legal/** -md-unwrap
 // Skipped always: .mdx files, LICENSE/COPYING/NOTICE/AUTHORS, and anything under node_modules, vendor or third_party.
 
-import { readFileSync, writeFileSync, existsSync, realpathSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 // ---------------------------------------------------------------------------------------------------------------- engine
 
@@ -36,7 +37,8 @@ const OTHER_BLOCK = /^[ \t]*(:::|\{%|\{\{|:[ \t])/; // containers, template tags
 const COMMENT = /<!--|-->/;
 // A labelled field ("Status: done", "**Owner:** x"): a capitalised key of up to three words, or a bold one, then a colon.
 // Where a block of lines holds two or more, they are structure ("Observed: ... / Evidence: ...") and keep their lines.
-const LABEL = /^[ \t]*(?:(?:\*\*|__)[^*_]{1,40}?(?::(?:\*\*|__)|(?:\*\*|__):)|\p{Lu}[\p{L}\p{N}_/()'-]*(?: [\p{L}\p{N}_/()'-]+){0,2}:)(?:[ \t]|$)/u;
+const LABEL =
+  /^[ \t]*(?:(?:\*\*|__)[^*_]{1,40}?(?::(?:\*\*|__)|(?:\*\*|__):)|\p{Lu}[\p{L}\p{N}_/()'-]*(?: [\p{L}\p{N}_/()'-]+){0,2}:)(?:[ \t]|$)/u;
 const HARD_BREAK = /( {2,}|\\|<br\s*\/?>)$/i;
 
 function indentWidth(s) {
@@ -93,7 +95,8 @@ function classify(lines) {
     }
     let j = i;
     const labels = [];
-    for (; j < lines.length && !isBlank(parts[j].inner); j++) if (LABEL.test(parts[j].inner.replace(LIST, ""))) labels.push(j);
+    for (; j < lines.length && !isBlank(parts[j].inner); j++)
+      if (LABEL.test(parts[j].inner.replace(LIST, ""))) labels.push(j);
     if (labels.length >= 2) for (const k of labels) field.add(k);
     i = j;
   }
@@ -102,7 +105,8 @@ function classify(lines) {
   const table = new Set();
   for (let i = 1; i < lines.length; i++) {
     const { inner } = parts[i];
-    if (!isDelimiterRow(inner) || isBlank(parts[i - 1].inner) || !parts[i - 1].inner.includes("|")) continue;
+    if (!isDelimiterRow(inner) || isBlank(parts[i - 1].inner) || !parts[i - 1].inner.includes("|"))
+      continue;
     table.add(i - 1);
     for (let j = i; j < lines.length && !isBlank(parts[j].inner); j++) table.add(j);
   }
@@ -142,7 +146,8 @@ function classify(lines) {
     if (fence && !isBlank(inner) && indentWidth(inner) < fence.base) fence = null; // its list item ended
     if (fence) {
       const m = dedent(inner, fence.base).match(FENCE);
-      if (m && m[1][0] === fence.char && m[1].length >= fence.len && m[2].trim() === "") fence = null;
+      if (m && m[1][0] === fence.char && m[1].length >= fence.len && m[2].trim() === "")
+        fence = null;
       continue;
     }
     if (math) {
@@ -219,17 +224,26 @@ function classify(lines) {
       inPara = false;
       continue;
     }
-    if (ATX.test(rel) || THEMATIC.test(rel) || SETEXT.test(rel) || LINK_DEF.test(rel) || OTHER_BLOCK.test(rel)) {
+    if (
+      ATX.test(rel) ||
+      THEMATIC.test(rel) ||
+      SETEXT.test(rel) ||
+      LINK_DEF.test(rel) ||
+      OTHER_BLOCK.test(rel)
+    ) {
       inPara = false;
       continue;
     }
     if (listMatch) {
       const markerEnd = listMatch[0].length;
-      const spaces = indentWidth(listMatch[1] + listMatch[2] + listMatch[3]) - indentWidth(listMatch[1] + listMatch[2]);
-      const col = indentWidth(listMatch[1]) + listMatch[2].length + (spaces >= 1 && spaces <= 4 ? spaces : 1);
+      const spaces =
+        indentWidth(listMatch[1] + listMatch[2] + listMatch[3]) -
+        indentWidth(listMatch[1] + listMatch[2]);
+      const col =
+        indentWidth(listMatch[1]) + listMatch[2].length + (spaces >= 1 && spaces <= 4 ? spaces : 1);
       listStack.push(col);
       kinds[i] = "start";
-      inPara = isBlank(inner.slice(markerEnd)) ? false : true;
+      inPara = !isBlank(inner.slice(markerEnd));
       continue;
     }
     kinds[i] = inPara && !wasPrevBlank && !field.has(i) ? "cont" : "start";
@@ -272,7 +286,7 @@ export function unwrap(text, touched = null) {
       continue;
     }
     let line = lines[g.start].replace(/[ \t]+$/, "");
-    for (let i = g.start + 1; i <= g.end; i++) line += " " + parts[i].inner.trim();
+    for (let i = g.start + 1; i <= g.end; i++) line += ` ${parts[i].inner.trim()}`;
     out.push(line);
   }
   return out.join(eol) + (endsWithEol ? eol : "");
@@ -280,7 +294,8 @@ export function unwrap(text, touched = null) {
 
 // --------------------------------------------------------------------------------------------------------------- git glue
 
-const git = (args, opts = {}) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...opts });
+const git = (args, opts = {}) =>
+  execFileSync("git", args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, ...opts });
 
 const SKIP_NAME = /(^|\/)(LICEN[CS]E|COPYING|NOTICE|AUTHORS)(\.[^/]*)?$/i;
 const SKIP_DIR = /(^|\/)(node_modules|vendor|third_party|\.git)\//;
@@ -290,13 +305,21 @@ function optedOut(paths) {
   if (!paths.length) return new Set();
   const out = git(["check-attr", "-z", "md-unwrap", "--", ...paths]).split("\0");
   const skip = new Set();
-  for (let k = 0; k + 2 < out.length; k += 3) if (out[k + 2] === "unset" || out[k + 2] === "false") skip.add(out[k]);
+  for (let k = 0; k + 2 < out.length; k += 3)
+    if (out[k + 2] === "unset" || out[k + 2] === "false") skip.add(out[k]);
   return skip;
 }
 
 function sameWords(a, b) {
   // Joined blockquote lines lose their own ">" prefixes, so prefixes are left out of the comparison.
-  const words = (s) => s.split(/\r?\n/).map((l) => splitQuote(l).inner).join(" ").split(/\s+/).filter(Boolean).join(" ");
+  const words = (s) =>
+    s
+      .split(/\r?\n/)
+      .map((l) => splitQuote(l).inner)
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
   return words(a) === words(b);
 }
 
@@ -315,7 +338,9 @@ function touchedLines(path) {
 }
 
 function runHook() {
-  const staged = git(["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]).split("\0").filter(isMarkdown);
+  const staged = git(["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"])
+    .split("\0")
+    .filter(isMarkdown);
   const skip = optedOut(staged);
   for (const path of staged) {
     if (skip.has(path)) continue;
@@ -328,14 +353,18 @@ function runHook() {
     const after = unwrap(before, touched);
     if (after === before) continue;
     if (!sameWords(before, after)) {
-      process.stderr.write(`no-hard-line-breaks: skipped ${path} (internal check failed: the words changed)\n`);
+      process.stderr.write(
+        `no-hard-line-breaks: skipped ${path} (internal check failed: the words changed)\n`,
+      );
       continue;
     }
     const sha = git(["hash-object", "-w", "--stdin", "--path", path], { input: after }).trim();
     git(["update-index", "--cacheinfo", `${mode},${sha},${path}`]);
     let note = "";
     if (existsSync(path) && readFileSync(path, "utf8") === before) writeFileSync(path, after);
-    else note = " (in the commit only: the working tree has other changes to this file, so it still has the wrapped lines)";
+    else
+      note =
+        " (in the commit only: the working tree has other changes to this file, so it still has the wrapped lines)";
     process.stderr.write(`no-hard-line-breaks: joined hard-wrapped lines in ${path}${note}\n`);
   }
 }
@@ -347,7 +376,9 @@ function runFiles(paths, check) {
     const after = unwrap(before);
     if (after === before) continue;
     if (!sameWords(before, after)) {
-      process.stderr.write(`no-hard-line-breaks: skipped ${path} (internal check failed: the words changed)\n`);
+      process.stderr.write(
+        `no-hard-line-breaks: skipped ${path} (internal check failed: the words changed)\n`,
+      );
       continue;
     }
     changed.push(path);
@@ -382,7 +413,9 @@ if (isMain) {
         files = tracked.filter((p) => !skip.has(p));
       }
       if (!files.length) {
-        console.error("usage: no-hard-line-breaks [--check] (--all | <file.md>...)   |   no-hard-line-breaks --hook");
+        console.error(
+          "usage: no-hard-line-breaks [--check] (--all | <file.md>...)   |   no-hard-line-breaks --hook",
+        );
         process.exit(2);
       }
       const changed = runFiles(files, check);
